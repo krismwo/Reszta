@@ -141,7 +141,7 @@ button{font-family:inherit;-webkit-user-select:none;user-select:none}
 .cnt.zero{color:var(--muted);opacity:.6}
 .warn{margin:0 0 6px;padding:8px 12px;border-radius:12px;background:var(--danger);color:#fff;font-size:14px;font-weight:700}
 .quick.trk{grid-template-columns:1.25fr repeat(5,1fr) .8fr}
-.tundo{border:0;border-radius:10px;background:var(--tip);color:var(--tip-ink);font-weight:800;font-size:15px;padding:8px 12px;cursor:pointer;flex:0 0 auto}
+.tundo{pointer-events:auto;border:0;border-radius:10px;background:var(--tip);color:var(--tip-ink);font-weight:800;font-size:15px;padding:8px 12px;cursor:pointer;flex:0 0 auto}
 .cnt.low{border-color:var(--tip);color:var(--tip)}
 .warn.amber{background:var(--tip);color:var(--tip-ink)}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:none;align-items:flex-end}
@@ -157,7 +157,7 @@ nav .in{display:flex;width:100%;max-width:560px}
 nav button{flex:1;border:0;background:transparent;color:var(--muted);font-family:var(--display);font-weight:700;font-size:15px;padding:7px 0 9px;cursor:pointer}
 nav button.on{color:var(--accent)}
 nav button span{display:block;font-size:20px;line-height:1.2}
-.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:9;width:max-content;max-width:92vw;display:flex;align-items:center;gap:14px}
+.toast{position:fixed;left:50%;top:34%;transform:translate(-50%,-14px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:9;width:max-content;max-width:92vw;display:flex;align-items:center;gap:14px}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion: reduce){.toast{transition:none}.chip:active,.key:active,.btn:active{transform:none}}
 /* AMOLED: czysta czerń, gdy telefon ma tryb ciemny */
@@ -269,6 +269,8 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
       <p class="big" id="rbig">—</p>
     </div>
 
+    <button class="btn" id="recvBtn" style="display:none;height:46px;font-size:18px">Przyjęto ✓ dodaj do kasy</button>
+
     <div id="giveWrap" style="display:none">
       <p class="warn" id="shortMsg" style="display:none"></p>
       <div class="give" id="give"></div>
@@ -360,6 +362,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
 <div class="sheet" id="sheet">
   <div class="sheetin">
     <div class="tillhead"><h2>Co dał klient</h2><span id="rcvTotal">0,00 zł</span></div>
+    <p class="hint" id="rcvHint" style="display:none;margin-bottom:6px"></p>
     <div id="rcvRows"></div>
     <div class="row" style="margin-top:10px"><button class="btn ghost" id="rcvClear" style="flex:1">Wyczyść</button><button class="btn" id="rcvOk" style="flex:2">Gotowe</button></div>
   </div>
@@ -431,7 +434,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
     r.setAttribute('data-amoled', ui.amoled ? '1' : '0');
     if (ui.amoled) r.setAttribute('data-theme', 'dark'); else r.removeAttribute('data-theme');
   }
-  var APP_VERSION = '7';
+  var APP_VERSION = '8';
   function renderAbout(){
     var dark = !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
     var inst = !!(window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches));
@@ -549,10 +552,9 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
     var t = $('toast'); t.innerHTML = '';
     var sp = document.createElement('span'); sp.textContent = msg; t.appendChild(sp);
     if (undo){ var b = document.createElement('button'); b.className = 'tundo'; b.textContent = 'Cofnij'; b.onclick = doUndo; t.appendChild(b); }
-    t.style.pointerEvents = undo ? 'auto' : 'none';
     t.classList.add('show');
     clearTimeout(toast.h);
-    toast.h = setTimeout(function(){ t.classList.remove('show'); t.style.pointerEvents = 'none'; }, undo ? 6500 : 1800);
+    toast.h = setTimeout(function(){ t.classList.remove('show'); }, undo ? 6500 : 1800);
   }
   function avail(d){ return till.track ? (till.c[d]||0) : Infinity; }
   function plan(c){
@@ -643,6 +645,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
     res.className = 'result';
     var giveWrap = $('giveWrap'), tipCard = $('tipCard');
     giveWrap.style.display = 'none'; tipCard.style.display = 'none';
+    $('recvBtn').style.display = 'none'; lastPlan = {list:[], rest:0};
 
     if (!due || !paid){
       res.classList.add('idle'); lab.textContent = 'Reszta'; setBigText('—'); return;
@@ -657,7 +660,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
     lab.textContent = tip > 0 ? 'Reszta do wydania (po napiwku)' : 'Reszta do wydania';
     if (tip > 0) res.classList.add('tipmode');
     setBig(give);
-    if (change === 0){ lab.textContent = 'Równo, bez reszty ✓'; return; }
+    if (change === 0){ lab.textContent = 'Równo, bez reszty ✓'; $('recvBtn').style.display = till.track ? '' : 'none'; return; }
 
     // rozpiska
     lastPlan = {list:[], rest:0};
@@ -719,12 +722,12 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
   $('clear').onclick = function(){ buzz(); reset(); };
   function finish(){
     var snap = {c: JSON.parse(JSON.stringify(till.c)), seen: JSON.parse(JSON.stringify(till.seen)), s: JSON.parse(JSON.stringify(s)), tipId: null};
-    var tip = s.tipC;
+    var tip = s.tipC, wasGiven = lastPlan.list.length > 0;
     commit();
     if (tip > 0){ var id = Date.now(); tips.unshift({id: id, ts: id, amt: tip}); snap.tipId = id; persist(); render(); coinFx(tip); }
     lastUndo = snap;
     reset();
-    var msg = tip > 0 ? 'Napiwek ' + fmt(tip) + ' zł zapisany' : 'Wydano';
+    var msg = tip > 0 ? 'Napiwek ' + fmt(tip) + ' zł zapisany' : (wasGiven ? 'Wydano' : 'Przyjęto do kasy');
     var low = lowList();
     if (low.length) msg += ' · mało: ' + low.slice(0,3).map(label).join(', ') + (low.length > 3 ? ' i ' + (low.length - 3) + ' więcej' : '');
     toast(msg, true); renderTill();
@@ -817,7 +820,15 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
     });
     $('rcvTotal').textContent = fmt(recvTotal(tmp)) + ' zł';
   }
-  function openRcv(){ tmp = JSON.parse(JSON.stringify(s.recv || {})); renderRcv(); $('sheet').style.display = 'flex'; }
+  var rcvFinish = false;
+  function openRcv(fin){
+    rcvFinish = !!fin;
+    tmp = JSON.parse(JSON.stringify(s.recv || {}));
+    var h = $('rcvHint');
+    if (rcvFinish){ h.style.display = ''; h.textContent = 'Do zapłaty: ' + fmt(toCents(s.due)) + ' zł. Zaznacz, jakimi nominałami zapłacił klient. Dodam je do kasy.'; }
+    else { h.style.display = 'none'; }
+    renderRcv(); $('sheet').style.display = 'flex';
+  }
   $('sheet').onclick = function(e){ if (e.target === this) this.style.display = 'none'; };
   $('rcvClear').onclick = function(){ buzz(); tmp = {}; renderRcv(); };
   $('rcvOk').onclick = function(){
@@ -826,8 +837,14 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
     DENOMS.forEach(function(d){ if (tmp[d] > 0) o[d] = tmp[d]; });
     $('sheet').style.display = 'none';
     if (tot <= 0) return;
+    var finishNow = rcvFinish && tot === toCents(s.due);
     s.recv = o; s.paid = centsStr(tot); s.tipC = 0; s.custom = false; s.tipStr = ''; s.active = 'paid';
-    update();
+    if (finishNow) finish(); else update();
+  };
+  $('recvBtn').onclick = function(){
+    buzz();
+    var has = DENOMS.some(function(d){ return s.recv && s.recv[d] > 0; });
+    if (has) finish(); else openRcv(true);
   };
 
   // eksport wszystkich danych: kasa + napiwki
