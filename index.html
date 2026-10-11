@@ -10,6 +10,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="color-scheme" content="dark light">
 <style>
 :root{
   --bg:#f3f6f2; --surface:#ffffff; --surface2:#e6ece6; --ink:#12241f; --muted:#5d6f68;
@@ -160,9 +161,8 @@ nav button span{display:block;font-size:20px;line-height:1.2}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion: reduce){.toast{transition:none}.chip:active,.key:active,.btn:active{transform:none}}
 /* AMOLED: czysta czerń, gdy telefon ma tryb ciemny */
-@media (prefers-color-scheme: dark){
-  :root[data-amoled="1"]:not([data-theme="light"]){ --bg:#000; --surface:#0e0e0e; --surface2:#1b1b1b; --line:#272727; --ink:#f3f3f3; --muted:#9c9c9c; }
-}
+:root[data-amoled="1"]{ --bg:#000; --surface:#0e0e0e; --surface2:#1b1b1b; --line:#272727; --ink:#f3f3f3; --muted:#9c9c9c; }
+:root[data-theme="dark"]{ color-scheme:dark }
 
 /* miniatury banknotów i monet */
 .give{gap:14px 16px;padding:8px 10px 8px 2px}
@@ -325,7 +325,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
   </section>
 
   <section class="view" id="v-set">
-    <button class="card toggle" id="amoledBtn"><div><b>Czarne tło (AMOLED)</b><small>Działa, gdy telefon ma włączony tryb ciemny</small></div><span class="pill on" id="amoledPill">WŁ.</span></button>
+    <button class="card toggle" id="amoledBtn"><div><b>Czarne tło (AMOLED)</b><small>Zawsze czarne, niezależnie od motywu przeglądarki</small></div><span class="pill on" id="amoledPill">WŁ.</span></button>
     <div class="card">
       <div class="tillhead"><h2>Cel napiwków na dzień</h2><span id="goalVal">wył.</span></div>
       <p class="hint" style="margin-bottom:10px">Na ekranie Napiwki pojawi się pasek postępu. Wartość 0 wyłącza cel.</p>
@@ -426,12 +426,16 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
   var ui = {amoled:true, goal:0};
   try { var uu = localStorage.getItem('ui_v2'); if (uu){ var uo = JSON.parse(uu); if (uo){ if (uo.amoled != null) ui.amoled = !!uo.amoled; if (uo.goal > 0) ui.goal = uo.goal|0; } } } catch(e){}
   function persistUi(){ try { localStorage.setItem('ui_v2', JSON.stringify(ui)); } catch(e){} }
-  function applyUi(){ document.documentElement.setAttribute('data-amoled', ui.amoled ? '1' : '0'); }
-  var APP_VERSION = '6';
+  function applyUi(){
+    var r = document.documentElement;
+    r.setAttribute('data-amoled', ui.amoled ? '1' : '0');
+    if (ui.amoled) r.setAttribute('data-theme', 'dark'); else r.removeAttribute('data-theme');
+  }
+  var APP_VERSION = '7';
   function renderAbout(){
     var dark = !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
     var inst = !!(window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches));
-    $('aboutTxt').textContent = 'Wersja ' + APP_VERSION + ' · motyw telefonu: ' + (dark ? 'ciemny' : 'jasny') + ' · ' + (inst ? 'otwarta jako aplikacja' : 'otwarta w przeglądarce');
+    $('aboutTxt').textContent = 'Wersja ' + APP_VERSION + ' · motyw telefonu: ' + (dark ? 'ciemny' : 'jasny') + ' · ' + (inst ? 'otwarta jako aplikacja' : 'otwarta w przeglądarce') + ' · czarne tło: ' + (ui.amoled ? 'wł.' : 'wył.');
   }
   function renderUi(){
     renderAbout();
