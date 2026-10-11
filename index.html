@@ -347,6 +347,11 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
       <p class="hint" style="margin-bottom:10px">Telefon wibruje przy każdym dotknięciu przycisku.</p>
       <button class="btn ghost" id="vibTest">Sprawdź wibracje</button>
     </div>
+    <div class="card">
+      <h2>O aplikacji</h2>
+      <p class="hint" id="aboutTxt" style="margin-bottom:10px"></p>
+      <button class="btn ghost" id="refreshApp">Pobierz najnowszą wersję</button>
+    </div>
     <button class="btn ghost" id="tillReset">Wyzeruj kasę</button>
     <button class="btn ghost" id="wipe">Wyczyść wszystkie napiwki</button>
   </section>
@@ -422,7 +427,14 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
   try { var uu = localStorage.getItem('ui_v2'); if (uu){ var uo = JSON.parse(uu); if (uo){ if (uo.amoled != null) ui.amoled = !!uo.amoled; if (uo.goal > 0) ui.goal = uo.goal|0; } } } catch(e){}
   function persistUi(){ try { localStorage.setItem('ui_v2', JSON.stringify(ui)); } catch(e){} }
   function applyUi(){ document.documentElement.setAttribute('data-amoled', ui.amoled ? '1' : '0'); }
+  var APP_VERSION = '6';
+  function renderAbout(){
+    var dark = !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    var inst = !!(window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches));
+    $('aboutTxt').textContent = 'Wersja ' + APP_VERSION + ' · motyw telefonu: ' + (dark ? 'ciemny' : 'jasny') + ' · ' + (inst ? 'otwarta jako aplikacja' : 'otwarta w przeglądarce');
+  }
   function renderUi(){
+    renderAbout();
     $('amoledPill').textContent = ui.amoled ? 'WŁ.' : 'WYŁ.';
     $('amoledPill').className = 'pill' + (ui.amoled ? ' on' : '');
     $('goalVal').textContent = ui.goal ? fmt(ui.goal) + ' zł' : 'wył.';
@@ -910,6 +922,13 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--tip);outline-of
     $('gFill').style.width = pct + '%';
     $('gTxt').textContent = today >= ui.goal ? 'Cel dnia ' + fmt(ui.goal) + ' zł osiągnięty 🎉' : 'Cel dnia: ' + fmt(ui.goal) + ' zł (' + pct + '%)';
   }
+  $('refreshApp').onclick = function(){
+    toast('Pobieram najnowszą wersję…');
+    var jobs = [];
+    try { if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){ return Promise.all(rs.map(function(r){ return r.unregister(); })); })); } catch(e){}
+    try { if (window.caches) jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); })); } catch(e){}
+    Promise.all(jobs).then(function(){ location.reload(); }, function(){ location.reload(); });
+  };
   $('amoledBtn').onclick = function(){ buzz(); ui.amoled = !ui.amoled; persistUi(); applyUi(); renderUi(); };
   $('goalMinus').onclick = function(){ buzz(); ui.goal = Math.max(0, ui.goal - 500); persistUi(); renderUi(); render(); };
   $('goalPlus').onclick = function(){ buzz(); ui.goal = Math.min(99900, ui.goal + 500); persistUi(); renderUi(); render(); };
